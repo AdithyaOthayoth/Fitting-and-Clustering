@@ -9,9 +9,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize as opt
+from sklearn.cluster import AffinityPropagation
+from sklearn.preprocessing import StandardScaler 
+from sklearn.preprocessing import normalize 
 
 #reading the data set and returns the dataframe
-def ReadandReturnData(filename):
+def ReadandReturnData(filename, indicator):
     """
     The ReadandReturnData function is used to read the filename,
     return a transposed dataframe df2, with Years as column1 and Electric
@@ -32,7 +35,7 @@ def ReadandReturnData(filename):
     df2 = df2[new_cols]
     df2 = df2.reset_index(drop = True)
     df2 = df2.rename_axis(None, axis = 1)
-    df2 = df2.rename(columns={'United Kingdom': 'Electric power consumption (kWh per capita)'})
+    df2 = df2.rename(columns={'United Kingdom': indicator})
     
     #plotting the data
     df2.plot("Years", "Electric power consumption (kWh per capita)")
@@ -84,10 +87,15 @@ def err_ranges(x, func, param, sigma):
     return lower, upper  
 
 #Passing the dataset name to the funtion ReadandReturnData 
-#Storing the dataframe in the variable df2
-df2 = ReadandReturnData('Dataset.csv')
-df2["Years"] = pd.to_numeric(df2["Years"])
+#Storing the dataframe in the variable 
+df_clusters = ReadandReturnData('Population Growth.csv',
+                                "Electric power consumption (kWh per capita)")
+df2 = ReadandReturnData('Dataset.csv', "Electric power consumption (kWh per capita)")
 
+
+#Code for fitting starts here
+
+df2["Years"] = pd.to_numeric(df2["Years"])
 #passing parameters to curve_fit and finding the param and covar
 param, covar = opt.curve_fit(exponential, df2["Years"],
                              df2["Electric power consumption (kWh per capita)"],
@@ -121,10 +129,50 @@ plt.title("Electric power consumption in United Kingdom")
 plt.legend()
 plt.show()
 
+#Code for fitting ends here
 
 
+#Code for Clustering starts here
+df_clusters = pd.DataFrame(df_clusters)
+#Scale data using StandarScaler()
+scaler = StandardScaler() 
+df_clusters = scaler.fit_transform(df_clusters)
 
+#Normalize the data using normalize()
+df_clusters = normalize(df_clusters)   
+df_clusters = pd.DataFrame(df_clusters)
+x = df_clusters[0]
+y = df_clusters[1]
 
+# setting up the clusterer. Used AffinityPropagation for clustering
+ap = AffinityPropagation(max_iter=2000)
+
+#runnig it
+#fitting data
+ap.fit(df_clusters)
+labels = ap.labels_
+cen = ap.cluster_centers_
+
+# print the number of centres formed
+print("\n number of cluster centres", len(cen))
+
+# plot using the labels to select colour
+plt.figure(figsize = (5.0, 5.0))
+ap_y_pred = ap.predict(df_clusters)
+col = ["blue", "red", "green"]
+for l in range(0, len(cen)): # loop over the different labels
+    plt.scatter(x, y,c=ap_y_pred, cmap='coolwarm')
+
+# show cluster centres
+for ic in range(len(cen)):
+    xc, yc = cen[ic,:]
+    plt.plot(xc, yc, marker='*', color='k', markersize=15)
+plt.xlabel("Years")
+plt.ylabel("Population Growth")
+plt.title("Population Growth in United Kingdom")
+plt.show()
+
+#Code for clustering ends here
 
 
 
